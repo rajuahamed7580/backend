@@ -9,11 +9,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const publicUploadsDir = path.join(__dirname, '../../public/uploads');
 
-// Ensure public uploads directory exists for fallback
-if (!fs.existsSync(publicUploadsDir)) {
-  fs.mkdirSync(publicUploadsDir, { recursive: true });
-}
-
 export const uploadBufferToStorage = async (buffer, originalname = 'image.jpg', options = {}) => {
   // 1. If Cloudinary credentials are provided, upload to Cloudinary
   if (isCloudinaryConfigured()) {
@@ -47,6 +42,7 @@ export const uploadBufferToStorage = async (buffer, originalname = 'image.jpg', 
   }
 
   // 2. Fallback: Save locally if Cloudinary credentials are not configured yet
+  await fs.promises.mkdir(publicUploadsDir, { recursive: true });
   const ext = path.extname(originalname) || '.jpg';
   const uniqueName = `upload-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
   const filePath = path.join(publicUploadsDir, uniqueName);
