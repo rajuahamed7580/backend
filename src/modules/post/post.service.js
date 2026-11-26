@@ -1,5 +1,6 @@
 import Post from './post.model.js';
 import Comment from '../comment/comment.model.js';
+import CustomUrl from '../customUrl/customUrl.model.js';
 import AppError from '../../utils/AppError.js';
 import { uploadBufferToStorage } from '../../utils/cloudinary.js';
 
@@ -113,10 +114,32 @@ class PostService {
       Post.countDocuments(filter)
     ]);
 
+    const postIds = posts.map((p) => p._id);
+    const activeUrls = await CustomUrl.find({
+      post: { $in: postIds },
+      isActive: true
+    })
+      .sort({ createdAt: 1 })
+      .select('post country state city username');
+
+    const urlMap = new Map();
+    for (const entry of activeUrls) {
+      const key = entry.post.toString();
+      const path = `/${entry.country}/${entry.state}/${entry.city}/${entry.username}`;
+      if (!urlMap.has(key)) urlMap.set(key, []);
+      urlMap.get(key).push(path);
+    }
+
+    const postsWithUrls = posts.map((p) => {
+      const obj = p.toObject();
+      obj.customUrls = urlMap.get(p._id.toString()) || [];
+      return obj;
+    });
+
     const totalPages = Math.ceil(total / itemsPerPage);
 
     return {
-      posts,
+      posts: postsWithUrls,
       meta: {
         page: currentPage,
         limit: itemsPerPage,
@@ -139,7 +162,19 @@ class PostService {
       throw new AppError(404, 'Post is not available.');
     }
 
-    return post;
+    const activeUrls = await CustomUrl.find({
+      post: post._id,
+      isActive: true
+    })
+      .sort({ createdAt: 1 })
+      .select('country state city username');
+
+    const postObj = post.toObject();
+    postObj.customUrls = activeUrls.map(
+      (entry) => `/${entry.country}/${entry.state}/${entry.city}/${entry.username}`
+    );
+
+    return postObj;
   }
 
   // Get single post by slug, returning ONLY ONE complete post with approved reviews and adjacent navigation
@@ -226,10 +261,11 @@ class PostService {
       throw new AppError(403, 'You do not have permission to delete this post.');
     }
 
-    // Delete post and its related comments
+    // Delete post, its related comments, and any custom URLs
     await Promise.all([
       Post.findByIdAndDelete(postId),
-      Comment.deleteMany({ post: postId })
+      Comment.deleteMany({ post: postId }),
+      CustomUrl.deleteMany({ post: postId })
     ]);
 
     return post;

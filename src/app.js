@@ -17,6 +17,7 @@ import userRouter from './modules/user/user.route.js';
 import postRouter from './modules/post/post.route.js';
 import commentRouter from './modules/comment/comment.route.js';
 import dashboardRouter from './modules/dashboard/dashboard.route.js';
+import customUrlRouter from './modules/customUrl/customUrl.route.js';
 
 const app = express();
 
@@ -69,6 +70,7 @@ app.use(`${API_PREFIX}/users`, userRouter);
 app.use(`${API_PREFIX}/posts`, postRouter);
 app.use(`${API_PREFIX}/comments`, commentRouter);
 app.use(`${API_PREFIX}/dashboard`, dashboardRouter);
+app.use(`${API_PREFIX}/custom-urls`, customUrlRouter);
 
 // 404 Route handler
 app.use(notFound);
